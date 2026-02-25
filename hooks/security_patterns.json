@@ -1,0 +1,420 @@
+{
+  "$schema": "Security patterns configuration for Claude Code hooks",
+  "$description": "Zero-dependency, self-documenting security rules. Each entry includes a 'reason' field explaining why the pattern is blocked.",
+  "$version": "1.0.0",
+
+  "bashPatterns": [
+    {
+      "pattern": "rm\\s+(-[^\\s]*\\s+)*(/|~|\\$HOME)",
+      "category": "destructive-file-ops",
+      "reason": "Prevents recursive deletion starting from root, home, or $HOME directory",
+      "action": "block"
+    },
+    {
+      "pattern": "rm\\s+-[^\\s]*r[^\\s]*f",
+      "category": "destructive-file-ops",
+      "reason": "Blocks rm with both recursive and force flags (rf order) to prevent accidental mass deletion",
+      "action": "block"
+    },
+    {
+      "pattern": "rm\\s+-[^\\s]*f[^\\s]*r",
+      "category": "destructive-file-ops",
+      "reason": "Blocks rm with both force and recursive flags (fr order) to prevent accidental mass deletion",
+      "action": "block"
+    },
+    {
+      "pattern": "rmdir\\s+(-[^\\s]*\\s+)*(/|~)",
+      "category": "destructive-file-ops",
+      "reason": "Prevents removal of root or home directories via rmdir",
+      "action": "block"
+    },
+    {
+      "pattern": "shred\\s+",
+      "category": "destructive-file-ops",
+      "reason": "Blocks shred which irrecoverably destroys file data by overwriting",
+      "action": "block"
+    },
+    {
+      "pattern": "find\\s+.*-delete",
+      "category": "find-destructive",
+      "reason": "Blocks find with -delete action which can silently remove large numbers of files",
+      "action": "block"
+    },
+    {
+      "pattern": "find\\s+.*-exec\\s+rm",
+      "category": "find-destructive",
+      "reason": "Blocks find piping results to rm, which can cause mass file deletion",
+      "action": "block"
+    },
+    {
+      "pattern": "find\\s+.*-exec\\s+shred",
+      "category": "find-destructive",
+      "reason": "Blocks find piping results to shred for irrecoverable mass file destruction",
+      "action": "block"
+    },
+    {
+      "pattern": "git\\s+push\\s+--force\\s+origin\\s+(main|master)\\b",
+      "category": "git-destructive",
+      "reason": "Prevents force-pushing to main/master which rewrites shared history and can destroy team work",
+      "action": "block"
+    },
+    {
+      "pattern": "git\\s+push\\s+-f\\s+origin\\s+(main|master)\\b",
+      "category": "git-destructive",
+      "reason": "Prevents force-push shorthand to main/master which rewrites shared history",
+      "action": "block"
+    },
+    {
+      "pattern": "git\\s+clean\\s+-[^\\s]*f",
+      "category": "git-destructive",
+      "reason": "Blocks git clean -f which permanently removes untracked files without confirmation",
+      "action": "block"
+    },
+    {
+      "pattern": "git\\s+reset\\s+--hard",
+      "category": "git-destructive",
+      "reason": "Blocks git reset --hard which discards all uncommitted changes irrecoverably",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bmkfs\\.",
+      "category": "system-destruction",
+      "reason": "Blocks filesystem creation commands which destroy all data on the target device",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bdd\\s+.*of=/dev/(sd|hd|nvme|disk)",
+      "category": "system-destruction",
+      "reason": "Blocks dd writing directly to disk devices which destroys partition tables and data",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bwipefs\\b",
+      "category": "system-destruction",
+      "reason": "Blocks wipefs which erases filesystem signatures from devices",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bfdisk\\b",
+      "category": "system-destruction",
+      "reason": "Blocks fdisk partition manipulation which can destroy disk layout",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bparted\\b",
+      "category": "system-destruction",
+      "reason": "Blocks parted partition editor which can destroy disk layout and data",
+      "action": "block"
+    },
+    {
+      "pattern": "chmod\\s+(-R\\s+)?777\\s+/",
+      "category": "permission-escalation",
+      "reason": "Blocks setting world-readable/writable/executable permissions on root paths, a severe security risk",
+      "action": "block"
+    },
+    {
+      "pattern": "chmod\\s+(-R\\s+)?000\\s+/",
+      "category": "permission-escalation",
+      "reason": "Blocks removing all permissions on root paths which can brick the system",
+      "action": "block"
+    },
+    {
+      "pattern": "chown\\s+-R\\s+.*\\s+/",
+      "category": "permission-escalation",
+      "reason": "Blocks recursive ownership change on root paths which can break system file permissions",
+      "action": "block"
+    },
+    {
+      "pattern": ":\\(\\)\\s*\\{",
+      "category": "fork-bombs",
+      "reason": "Blocks the classic bash fork bomb pattern :(){ :|:& };: which crashes the system via process exhaustion",
+      "action": "block"
+    },
+    {
+      "pattern": "\\.\\(\\)\\s*\\{",
+      "category": "fork-bombs",
+      "reason": "Blocks dot-variant fork bomb pattern which crashes the system via process exhaustion",
+      "action": "block"
+    },
+    {
+      "pattern": "curl\\s+.*-d.*\\$",
+      "category": "network-exfil",
+      "reason": "Blocks curl POST requests that reference shell variables, indicating potential data exfiltration",
+      "action": "block"
+    },
+    {
+      "pattern": "wget\\s+.*--post-data",
+      "category": "network-exfil",
+      "reason": "Blocks wget POST requests which could exfiltrate data to external servers",
+      "action": "block"
+    },
+    {
+      "pattern": "nc\\s+-[^\\s]*l",
+      "category": "network-exfil",
+      "reason": "Blocks netcat listen mode which can open unauthorized network backdoors",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bunset\\s+(PATH|HOME|USER)\\b",
+      "category": "environment-destructive",
+      "reason": "Blocks unsetting critical environment variables which breaks shell functionality",
+      "action": "block"
+    },
+    {
+      "pattern": "export\\s+PATH\\s*=\\s*$",
+      "category": "environment-destructive",
+      "reason": "Blocks setting PATH to empty string which makes all commands unfindable",
+      "action": "block"
+    },
+    {
+      "pattern": "export\\s+HOME\\s*=\\s*/dev/null",
+      "category": "environment-destructive",
+      "reason": "Blocks redirecting HOME to /dev/null which breaks all home-directory-relative operations",
+      "action": "block"
+    },
+    {
+      "pattern": "npm\\s+install\\s+-g",
+      "category": "package-manager-global",
+      "reason": "Blocks global npm installs which modify system-wide packages outside project scope",
+      "action": "block"
+    },
+    {
+      "pattern": "pip\\s+install\\s+(?!--user).*--system",
+      "category": "package-manager-global",
+      "reason": "Blocks pip system-wide installs which can conflict with OS package manager",
+      "action": "block"
+    },
+    {
+      "pattern": "gem\\s+install\\s+.*--no-user",
+      "category": "package-manager-global",
+      "reason": "Blocks system-wide gem installs which modify shared Ruby environment",
+      "action": "block"
+    },
+    {
+      "pattern": "docker\\s+system\\s+prune\\s+-a",
+      "category": "docker-destructive",
+      "reason": "Blocks pruning all Docker resources including images, which can destroy development environments",
+      "action": "block"
+    },
+    {
+      "pattern": "docker\\s+rm\\s+-f\\s+\\$\\(docker\\s+ps",
+      "category": "docker-destructive",
+      "reason": "Blocks force-removing all running containers via command substitution",
+      "action": "block"
+    },
+    {
+      "pattern": "docker\\s+rmi\\s+-f\\s+\\$\\(docker\\s+images",
+      "category": "docker-destructive",
+      "reason": "Blocks force-removing all Docker images via command substitution",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bDROP\\s+DATABASE\\b",
+      "category": "database-destructive",
+      "reason": "Blocks DROP DATABASE which permanently destroys an entire database and all its data",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bDROP\\s+TABLE\\b",
+      "category": "database-destructive",
+      "reason": "Blocks DROP TABLE which permanently destroys a table and all its data",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bTRUNCATE\\s+TABLE\\b",
+      "category": "database-destructive",
+      "reason": "Blocks TRUNCATE TABLE which irrecoverably deletes all rows from a table",
+      "action": "block"
+    },
+    {
+      "pattern": "\\bDELETE\\s+FROM\\s+\\w+\\s*;?\\s*$",
+      "category": "database-destructive",
+      "reason": "Blocks DELETE FROM without a WHERE clause which deletes all rows in a table",
+      "action": "block"
+    },
+    {
+      "pattern": "aws\\s+s3\\s+rb\\s+--force",
+      "category": "cloud-destructive",
+      "reason": "Blocks force-deleting S3 buckets which permanently destroys all stored objects",
+      "action": "block"
+    },
+    {
+      "pattern": "aws\\s+ec2\\s+terminate-instances",
+      "category": "cloud-destructive",
+      "reason": "Blocks EC2 instance termination which permanently destroys running infrastructure",
+      "action": "block"
+    },
+    {
+      "pattern": "gcloud\\s+.*delete",
+      "category": "cloud-destructive",
+      "reason": "Blocks GCP delete operations which can destroy cloud resources",
+      "action": "block"
+    },
+    {
+      "pattern": "terraform\\s+destroy",
+      "category": "cloud-destructive",
+      "reason": "Blocks terraform destroy which tears down all managed infrastructure",
+      "action": "block"
+    },
+    {
+      "pattern": "ssh-keygen\\s+-f.*id_rsa",
+      "category": "ssh-key-ops",
+      "reason": "Blocks overwriting the default SSH private key which can lock out remote access",
+      "action": "block"
+    },
+    {
+      "pattern": "ssh-add\\s+-D",
+      "category": "ssh-key-ops",
+      "reason": "Blocks removing all SSH keys from the agent which disrupts authenticated connections",
+      "action": "block"
+    },
+    {
+      "pattern": "crontab\\s+-r",
+      "category": "cron-modification",
+      "reason": "Blocks removing the entire crontab which destroys all scheduled jobs",
+      "action": "block"
+    },
+    {
+      "pattern": "crontab\\s+-e",
+      "category": "cron-modification",
+      "reason": "Blocks interactive crontab editing which could introduce unauthorized scheduled tasks",
+      "action": "block"
+    },
+    {
+      "pattern": "yes\\s*>",
+      "category": "disk-filling",
+      "reason": "Blocks redirecting infinite 'yes' output to a file which fills disk to capacity",
+      "action": "block"
+    },
+    {
+      "pattern": "cat\\s+/dev/urandom\\s*>",
+      "category": "disk-filling",
+      "reason": "Blocks redirecting infinite random data to a file which fills disk to capacity",
+      "action": "block"
+    },
+    {
+      "pattern": "head\\s+-c.*G\\s+/dev/urandom\\s*>",
+      "category": "disk-filling",
+      "reason": "Blocks writing gigabytes of random data to a file which fills disk space",
+      "action": "block"
+    }
+  ],
+
+  "zeroAccessPaths": [
+    {
+      "pattern": ".env",
+      "reason": "Environment files contain secrets, API keys, and credentials that must never be read or modified"
+    },
+    {
+      "pattern": "~/.ssh/",
+      "reason": "SSH directory contains private keys and authorized_keys; access could compromise remote authentication"
+    },
+    {
+      "pattern": "~/.aws/",
+      "reason": "AWS credentials directory; access could enable unauthorized cloud resource manipulation"
+    },
+    {
+      "pattern": "~/.config/gcloud/",
+      "reason": "GCP credentials directory; access could enable unauthorized Google Cloud operations"
+    },
+    {
+      "pattern": "*.pem",
+      "reason": "PEM files contain private keys or certificates used for TLS/SSH authentication"
+    },
+    {
+      "pattern": "*.key",
+      "reason": "Key files contain private cryptographic keys for authentication and encryption"
+    },
+    {
+      "pattern": "*.p12",
+      "reason": "PKCS#12 files contain bundled private keys and certificates"
+    },
+    {
+      "pattern": "*.pfx",
+      "reason": "PFX files contain bundled private keys and certificates (Windows format)"
+    },
+    {
+      "pattern": "*.tfstate",
+      "reason": "Terraform state files contain sensitive infrastructure details and sometimes credentials"
+    },
+    {
+      "pattern": "*.tfstate.backup",
+      "reason": "Terraform state backups contain the same sensitive infrastructure data as tfstate files"
+    },
+    {
+      "pattern": "id_rsa",
+      "reason": "RSA private key file; exposure compromises all systems authenticated with this key"
+    },
+    {
+      "pattern": "id_ed25519",
+      "reason": "Ed25519 private key file; exposure compromises all systems authenticated with this key"
+    },
+    {
+      "pattern": "credentials.json",
+      "reason": "Common credential store file containing API keys, tokens, or service account data"
+    },
+    {
+      "pattern": "service-account*.json",
+      "reason": "GCP service account key files; exposure grants full access to associated cloud permissions"
+    }
+  ],
+
+  "readOnlyPaths": [
+    {
+      "pattern": "/etc/",
+      "reason": "System configuration directory; modifications can break OS-level services and security"
+    },
+    {
+      "pattern": "node_modules/",
+      "reason": "Dependency directory managed by npm/yarn; manual edits are overwritten and cause inconsistencies"
+    },
+    {
+      "pattern": "dist/",
+      "reason": "Build output directory; should only be modified by the build toolchain, not manual edits"
+    },
+    {
+      "pattern": "build/",
+      "reason": "Build output directory; should only be modified by the build toolchain, not manual edits"
+    },
+    {
+      "pattern": "*.lock",
+      "reason": "Lock files are auto-generated by package managers; manual edits cause dependency resolution failures"
+    },
+    {
+      "pattern": "*.min.js",
+      "reason": "Minified JavaScript files are build artifacts; edits are unreadable and overwritten on rebuild"
+    },
+    {
+      "pattern": "*.min.css",
+      "reason": "Minified CSS files are build artifacts; edits are unreadable and overwritten on rebuild"
+    },
+    {
+      "pattern": "vendor/",
+      "reason": "Vendored dependencies directory; manual edits bypass dependency management and break updates"
+    },
+    {
+      "pattern": ".git/objects/",
+      "reason": "Git object store; corruption here destroys repository history permanently"
+    },
+    {
+      "pattern": ".git/refs/",
+      "reason": "Git references; corruption here can orphan branches and lose commit pointers"
+    },
+    {
+      "pattern": "package-lock.json",
+      "reason": "npm lock file; manual edits cause dependency tree inconsistencies and install failures"
+    },
+    {
+      "pattern": "yarn.lock",
+      "reason": "Yarn lock file; manual edits cause dependency tree inconsistencies and install failures"
+    },
+    {
+      "pattern": "Cargo.lock",
+      "reason": "Rust lock file; manual edits cause dependency resolution failures in cargo builds"
+    },
+    {
+      "pattern": "poetry.lock",
+      "reason": "Poetry lock file; manual edits cause dependency resolution failures in Python projects"
+    }
+  ]
+}
