@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/AlmightyChan/claude-hooks/compare/v0.1.0...v0.1.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* **hooks:** expand log rotation to cover all high-volume log files ([34dc64e](https://github.com/AlmightyChan/claude-hooks/commit/34dc64ed07b8cf820f464853af3edebef722c16d))
+
 ## [0.1.0] - 2026-02-24
 
 ### Added
