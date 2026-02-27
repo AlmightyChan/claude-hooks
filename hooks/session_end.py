@@ -83,10 +83,36 @@ def main() -> int:
     append_jsonl(log_dir / "session_end.jsonl", log_entry)
     append_event("SessionEnd", session_id, {})
 
-    # Rotate high-volume log files
-    for filename in ("event-stream.jsonl", "pre_tool_use.jsonl", "post_tool_use.jsonl"):
+    # Rotate high-volume log files (line-count based)
+    for filename in (
+        "event-stream.jsonl",
+        "pre_tool_use.jsonl",
+        "post_tool_use.jsonl",
+        "user_prompt_submit.jsonl",
+        "permission-requests.jsonl",
+        "mcp-usage.jsonl",
+        "subagent_stop.jsonl",
+        "stop.jsonl",
+    ):
         if rotate_log_file(log_dir, filename):
             append_event("LogRotation", session_id, {"file": filename})
+
+    # Rotate chat.jsonl by size (entries are huge, line count is misleading)
+    chat_log = log_dir / "chat.jsonl"
+    max_chat_bytes = 2 * 1024 * 1024  # 2MB
+    if chat_log.exists() and chat_log.stat().st_size > max_chat_bytes:
+        try:
+            with open(chat_log) as f:
+                lines = f.readlines()
+            # Keep last half of entries
+            keep = lines[len(lines) // 2 :]
+            fd, tmp_path = tempfile.mkstemp(dir=str(log_dir), suffix=".jsonl.tmp")
+            with os.fdopen(fd, "w") as tmp:
+                tmp.writelines(keep)
+            os.replace(tmp_path, str(chat_log))
+            append_event("LogRotation", session_id, {"file": "chat.jsonl", "mode": "size"})
+        except (IOError, OSError):
+            pass
 
     return 0
 
